@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Status Check</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+
+const SUPABASE_URL = "https://vssilapltdpdwulsqtma.supabase.co
+";
+const SUPABASE_KEY = "sb_publishable_tWRkP1Gj73tg7wb3JS9Cvw_8ek2-4EG
+";
+
+const supabase = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+let selected = new Set();
+let otherText = "";
+
+async function load() {
+
+const { data: status } =
+await supabase.from("app_status")
+.select("*").eq("id",1).single();
+
+document.getElementById("status")
+.innerText =
+status.is_available ? "🙂 Any time" : "🙁 Busy";
+
+const { data: buttons } =
+await supabase.from("buttons").select("*");
+
+const container = document.getElementById("buttons");
+container.innerHTML = "";
+
+buttons.forEach(b=>{
+let btn=document.createElement("button");
+btn.innerText=b.label;
+
+btn.onclick=()=>{
+if(selected.has(b.key)){
+selected.delete(b.key);
+btn.style.background="";
+return;
+}
+
+if(b.needs_text){
+let txt=prompt("What other thing? (optional)");
+if(txt===null) return;
+otherText=txt;
+}
+
+selected.add(b.key);
+btn.style.background="#ccc";
+};
+
+container.appendChild(btn);
+});
+
+}
+
+async function sendRequest(){
+
+if(selected.size===0){
+alert("Select at least one");
+return;
+}
+
+const { data: status } =
+await supabase.from("app_status")
+.select("*").eq("id",1).single();
+
+await supabase.from("requests").insert({
+selected_keys:[...selected],
+other_text:otherText,
+status_at_time:
+status.is_available ? "any_time":"busy"
+});
+
+alert("Sent ✅");
+
+selected.clear();
+load();
+}
+
+</script>
+</head>
+
+<body onload="load()" style="font-family:sans-serif;text-align:center">
+
+<h1 id="status">Loading...</h1>
+
+<div id="buttons"></div>
+
+<br><br>
+
+<button onclick="sendRequest()">Send</button>
+
+</body>
+</html>
