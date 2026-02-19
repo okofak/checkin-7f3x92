@@ -8,83 +8,58 @@
 
 <script>
 
-const SUPABASE_URL = "https://vssilapltdpdwulsqtma.supabase.co
-";
-const SUPABASE_KEY = "sb_publishable_tWRkP1Gj73tg7wb3JS9Cvw_8ek2-4EG
-";
+const SUPABASE_URL = "https://vssilapltdpdwulsqtma.supabase.co";
+const SUPABASE_KEY = "sb_publishable_tWRkP1Gj73tg7wb3JS9Cvw_8ek2-4EG";
 
 const supabase = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_KEY
 );
 
-let selected = new Set();
-let otherText = "";
-
-async function load() {
-
-const { data: status } =
-await supabase.from("app_status")
-.select("*").eq("id",1).single();
-
-document.getElementById("status")
-.innerText =
-status.is_available ? "🙂 Any time" : "🙁 Busy";
-
-const { data: buttons } =
-await supabase.from("buttons").select("*");
-
-const container = document.getElementById("buttons");
-container.innerHTML = "";
-
-buttons.forEach(b=>{
-let btn=document.createElement("button");
-btn.innerText=b.label;
-
-btn.onclick=()=>{
-if(selected.has(b.key)){
-selected.delete(b.key);
-btn.style.background="";
-return;
+function showError(msg){
+  const el=document.getElementById("error");
+  el.style.display="block";
+  el.textContent=msg;
 }
 
-if(b.needs_text){
-let txt=prompt("What other thing? (optional)");
-if(txt===null) return;
-otherText=txt;
-}
+async function load(){
+  try{
 
-selected.add(b.key);
-btn.style.background="#ccc";
-};
+    const statusRes =
+      await supabase.from("app_status")
+      .select("*")
+      .eq("id",1)
+      .single();
 
-container.appendChild(btn);
-});
+    if(statusRes.error){
+      showError(statusRes.error.message);
+      return;
+    }
 
-}
+    document.getElementById("status").innerText =
+      statusRes.data.is_available ? "🙂 Any time" : "🙁 Busy";
 
-async function sendRequest(){
+    const btnRes =
+      await supabase.from("buttons")
+      .select("*");
 
-if(selected.size===0){
-alert("Select at least one");
-return;
-}
+    if(btnRes.error){
+      showError(btnRes.error.message);
+      return;
+    }
 
-const { data: status } =
-await supabase.from("app_status")
-.select("*").eq("id",1).single();
+    const container=document.getElementById("buttons");
+    container.innerHTML="";
 
-await supabase.from("requests").insert({
-selected_keys:[...selected],
-other_text:otherText,
-status_at_time:
-status.is_available ? "any_time":"busy"
-});
+    btnRes.data.forEach(b=>{
+      let btn=document.createElement("button");
+      btn.innerText=b.label;
+      container.appendChild(btn);
+    });
 
-alert("Sent ✅");
-
-selected.clear();
-load();
+  }catch(e){
+    showError(e.message);
+  }
 }
 
 </script>
@@ -94,6 +69,8 @@ load();
 
 <h1 id="status">Loading...</h1>
 
+<div id="error" style="color:red;font-weight:bold;"></div>
+
 <div id="buttons"></div>
 
 <br><br>
@@ -101,4 +78,5 @@ load();
 <button onclick="sendRequest()">Send</button>
 
 </body>
+
 </html>
