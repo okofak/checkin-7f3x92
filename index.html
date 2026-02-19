@@ -1,82 +1,147 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Status Check</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Status Check</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<script>
+  <style>
+    body { font-family: system-ui, Arial; text-align: center; padding: 40px; }
+    h1 { font-size: 56px; margin: 0 0 20px; }
+    #buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 20px 0; }
+    button { padding: 10px 14px; border-radius: 12px; border: 1px solid #ccc; background: #fff; font-weight: 700; cursor: pointer; }
+    button.selected { background: #e7e7e7; border-color: #111; }
+    #sendBtn { margin-top: 18px; padding: 12px 18px; }
+    input { padding: 10px 12px; border-radius: 12px; border: 1px solid #ccc; width: min(360px, 90vw); }
+    #error { color: #b00020; font-weight: 800; margin-top: 14px; white-space: pre-wrap; }
+  </style>
 
-const SUPABASE_URL = "https://vssilapltdpdwulsqtma.supabase.co";
-const SUPABASE_KEY = "sb_publishable_tWRkP1Gj73tg7wb3JS9Cvw_8ek2-4EG";
+  <script>
+    // ✅ paste your values
+    const SUPABASE_URL = "https://vssilapltdpdwulsqtma.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_tWRkP1Gj73tg7wb3JS9Cvw_8ek2-4EG";
 
-const supabase = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY
-);
+    // Make it global so <body onload> can call it safely
+    window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-function showError(msg){
-  const el=document.getElementById("error");
-  el.style.display="block";
-  el.textContent=msg;
-}
+    window.selectedKeys = new Set();
+    window.otherText = "";
 
-async function load(){
-  try{
-
-    const statusRes =
-      await supabase.from("app_status")
-      .select("*")
-      .eq("id",1)
-      .single();
-
-    if(statusRes.error){
-      showError(statusRes.error.message);
-      return;
+    function setError(msg) {
+      const el = document.getElementById("error");
+      el.textContent = msg || "";
     }
 
-    document.getElementById("status").innerText =
-      statusRes.data.is_available ? "🙂 Any time" : "🙁 Busy";
+    async function load() {
+      setError("");
 
-    const btnRes =
-      await supabase.from("buttons")
-      .select("*");
+      // STATUS
+      const statusRes = await window.sb.from("app_status").select("*").eq("id", 1).single();
+      if (statusRes.error) { setError("Status error: " + statusRes.error.message); return; }
 
-    if(btnRes.error){
-      showError(btnRes.error.message);
-      return;
+      const isAvail = !!statusRes.data.is_available;
+      document.getElementById("status").innerText = isAvail ? "🙂 Any time" : "🙁 Busy";
+
+      // BUTTONS
+      const btnRes = await window.sb.from("buttons").select("*").eq("active", true).order("sort_order", { ascending: true });
+      if (btnRes.error) { setError("Buttons error: " + btnRes.error.message); return; }
+
+      const container = document.getElementById("buttons");
+      container.innerHTML = "";
+
+      btnRes.data.forEach(b => {
+        const btn = document.createElement("button");
+        btn.textContent = b.label;
+        btn.dataset.key = b.key;
+        btn.className = window.selectedKeys.has(b.key) ? "selected" : "";
+
+        btn.onclick = async () => {
+          // toggle off
+          if (window.selectedKeys.has(b.key)) {
+            window.selectedKeys.delete(b.key);
+            if (b.key === "other") window.otherText = "";
+            btn.classList.remove("selected");
+            updateSendEnabled();
+            return;
+          }
+
+          // selecting on
+          if (b.needs_text) {
+            const txt = prompt("What other thing? (optional)");
+            if (txt === null) return; // cancel => do not select
+            window.otherText = txt;   // can be empty
+          }
+
+          window.selectedKeys.add(b.key);
+          btn.classList.add("selected");
+          updateSendEnabled();
+        };
+
+        container.appendChild(btn);
+      });
+
+      updateSendEnabled();
     }
 
-    const container=document.getElementById("buttons");
-    container.innerHTML="";
+    function updateSendEnabled() {
+      const sendBtn = document.getElementById("sendBtn");
+      sendBtn.disabled = window.selectedKeys.size === 0;
+    }
 
-    btnRes.data.forEach(b=>{
-      let btn=document.createElement("button");
-      btn.innerText=b.label;
-      container.appendChild(btn);
-    });
+    async function sendRequest() {
+      setError("");
 
-  }catch(e){
-    showError(e.message);
-  }
-}
+      if (window.selectedKeys.size === 0) {
+        setError("Select at least one option before sending.");
+        return;
+      }
 
-</script>
+      const timeWindow = document.getElementById("timeWindow").value.trim();
+
+      const statusRes = await window.sb.from("app_status").select("*").eq("id", 1).single();
+      if (statusRes.error) { setError("Status error: " + statusRes.error.message); return; }
+
+      const statusAtTime = statusRes.data.is_available ? "any_time" : "busy";
+
+      const ins = await window.sb.from("requests").insert({
+        selected_keys: Array.from(window.selectedKeys),
+        other_text: window.selectedKeys.has("other") ? (window.otherText || null) : null,
+        time_window: timeWindow ? timeWindow : null,
+        status_at_time: statusAtTime
+      });
+
+      if (ins.error) { setError("Send error: " + ins.error.message); return; }
+
+      // reset UI
+      window.selectedKeys.clear();
+      window.otherText = "";
+      document.getElementById("timeWindow").value = "";
+      await load();
+      alert("Sent ✅");
+    }
+
+    // expose to HTML
+    window.load = load;
+    window.sendRequest = sendRequest;
+  </script>
 </head>
 
-<body onload="load()" style="font-family:sans-serif;text-align:center">
+<body onload="load()">
+  <h1 id="status">Loading…</h1>
 
-<h1 id="status">Loading...</h1>
+  <div id="buttons"></div>
 
-<div id="error" style="color:red;font-weight:bold;"></div>
+  <div style="margin-top:12px;">
+    <div style="font-weight:700; margin-bottom:6px;">What window? (optional)</div>
+    <input id="timeWindow" placeholder="e.g., 2–4pm or tonight" />
+  </div>
 
-<div id="buttons"></div>
+  <div>
+    <button id="sendBtn" onclick="sendRequest()" disabled>Send</button>
+  </div>
 
-<br><br>
-
-<button onclick="sendRequest()">Send</button>
-
+  <div id="error"></div>
 </body>
-
 </html>
