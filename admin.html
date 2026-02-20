@@ -3,65 +3,123 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Admin Panel</title>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<script>
-const SUPABASE_URL = "https://vssilapltdpdwulsqtma.supabase.co";
-const SUPABASE_KEY = "sb_publishable_tWRkP1Gj73tg7wb3JS9Cvw_8ek2-4EG";
-
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-async function loadAdmin(){
-
-// STATUS
-const { data: status } =
-await sb.from("app_status").select("*").eq("id",1).single();
-
-document.getElementById("status")
-.innerText = status.is_available
-? "🙂 Any time"
-: "🙁 Busy";
-
-// REQUESTS
-const { data: reqs } =
-await sb.from("requests")
-.select("*")
-.order("created_at",{ascending:false});
-
-const list=document.getElementById("requests");
-list.innerHTML="";
-
-reqs.forEach(r=>{
-const li=document.createElement("div");
-li.innerText =
-`${new Date(r.created_at).toLocaleString()} → ${r.selected_keys.join(", ")}`;
-list.appendChild(li);
-});
-}
-
-async function toggleStatus(){
-
-const { data: status } =
-await sb.from("app_status").select("*").eq("id",1).single();
-
-await sb.from("app_status")
-.update({is_available:!status.is_available})
-.eq("id",1);
-
-loadAdmin();
-}
-</script>
+<style>
+  body{font-family:system-ui,Arial;text-align:center;padding:28px;}
+  input{padding:10px 12px;border:1px solid #ccc;border-radius:12px;width:min(340px,90vw);margin:6px;}
+  button{padding:10px 14px;border-radius:12px;border:1px solid #ccc;background:#fff;font-weight:700;cursor:pointer;margin:6px;}
+  .primary{background:#111;color:#fff;border-color:#111;}
+  .card{max-width:700px;margin:0 auto;border:1px solid #eee;border-radius:16px;padding:18px;box-shadow:0 10px 28px rgba(0,0,0,.06);}
+  #error{color:#b00020;font-weight:800;white-space:pre-wrap;margin-top:10px;}
+  table{width:100%;border-collapse:collapse;margin-top:10px;}
+  th,td{border-bottom:1px solid #eee;padding:8px;text-align:left;vertical-align:top;}
+</style>
 </head>
 
-<body onload="loadAdmin()" style="font-family:sans-serif;text-align:center">
+<body>
+<div class="card">
+  <h1 style="margin:0 0 10px;">Admin</h1>
 
-<h1 id="status"></h1>
+  <div id="loginBox">
+    <div style="font-weight:700;margin-bottom:6px;">Log in</div>
+    <input id="email" placeholder="email" />
+    <br/>
+    <input id="password" type="password" placeholder="password" />
+    <br/>
+    <button class="primary" id="loginBtn">Login</button>
+  </div>
 
-<button onclick="toggleStatus()">Toggle Status</button>
+  <div id="adminBox" style="display:none;">
+    <h2 id="status" style="margin:10px 0 6px;">—</h2>
+    <button class="primary" id="toggleBtn">Toggle Status</button>
+    <button id="logoutBtn">Logout</button>
 
-<h2>Requests</h2>
-<div id="requests"></div>
+    <h3 style="margin:18px 0 8px;">Requests</h3>
+    <table id="reqTable"></table>
+  </div>
 
+  <div id="error"></div>
+</div>
+
+<script>
+  const SUPABASE_URL = "PASTE_PROJECT_URL_HERE";
+  const SUPABASE_KEY = "PASTE_PUBLISHABLE_KEY_HERE";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  function setError(msg){ document.getElementById("error").textContent = msg || ""; }
+
+  async function refreshAdmin(){
+    setError("");
+
+    const statusRes = await sb.from("app_status").select("*").eq("id",1).single();
+    if(statusRes.error){ setError("Status read error: " + statusRes.error.message); return; }
+
+    document.getElementById("status").innerText =
+      statusRes.data.is_available ? "🙂 Any time" : "🙁 Busy";
+
+    const reqRes = await sb.from("requests")
+      .select("*")
+      .order("created_at", {ascending:false})
+      .limit(50);
+
+    if(reqRes.error){ setError("Requests read error: " + reqRes.error.message); return; }
+
+    const t = document.getElementById("reqTable");
+    t.innerHTML = `
+      <tr>
+        <th>Time</th><th>Selected</th><th>Other</th><th>Status</th>
+      </tr>
+    `;
+
+    (reqRes.data || []).forEach(r=>{
+      const selected = Array.isArray(r.selected_keys) ? r.selected_keys.join(", ") : JSON.stringify(r.selected_keys);
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${new Date(r.created_at).toLocaleString()}</td>
+        <td>${selected}</td>
+        <td>${r.other_text ?? ""}</td>
+        <td>${r.status_at_time}</td>
+      `;
+      t.appendChild(tr);
+    });
+  }
+
+  async function updateUI(){
+    const { data } = await sb.auth.getSession();
+    const authed = !!data.session;
+    document.getElementById("loginBox").style.display = authed ? "none" : "block";
+    document.getElementById("adminBox").style.display = authed ? "block" : "none";
+    if(authed) await refreshAdmin();
+  }
+
+  document.getElementById("loginBtn").onclick = async ()=>{
+    setError("");
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    const res = await sb.auth.signInWithPassword({ email, password });
+    if(res.error) setError("Login error: " + res.error.message);
+    await updateUI();
+  };
+
+  document.getElementById("logoutBtn").onclick = async ()=>{
+    await sb.auth.signOut();
+    await updateUI();
+  };
+
+  document.getElementById("toggleBtn").onclick = async ()=>{
+    setError("");
+    const cur = await sb.from("app_status").select("*").eq("id",1).single();
+    if(cur.error){ setError("Toggle read error: " + cur.error.message); return; }
+
+    const upd = await sb.from("app_status")
+      .update({ is_available: !cur.data.is_available, updated_at: new Date().toISOString() })
+      .eq("id",1);
+
+    if(upd.error){ setError("Toggle update error: " + upd.error.message); return; }
+    await refreshAdmin();
+  };
+
+  updateUI();
+</script>
 </body>
 </html>
