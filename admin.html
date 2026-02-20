@@ -111,7 +111,11 @@
     const t = document.getElementById("reqTable");
     t.innerHTML = `
       <tr>
-        <th>Time</th><th>Selected</th><th>Other</th><th>Status</th>
+          <th>Time</th>
+          <th>Selected</th>
+          <th>Other</th>
+          <th>Status</th>
+          <th>Action</th>
       </tr>
     `;
 
@@ -126,11 +130,32 @@
         <td>${selected}</td>
         <td>${r.other_text ?? ""}</td>
         <td>${r.status_at_time}</td>
+        <td>
+          <button onclick="deleteRequest(${r.id})">
+            Delete
+          </button>
+        </td>
       `;
       t.appendChild(tr);
     });
   }
 
+async function deleteRequest(id){
+  if(!confirm("Delete this request?")) return;
+
+  const res = await sb
+    .from("requests")
+    .delete()
+    .eq("id", id);
+
+  if(res.error){
+    setError(res.error.message);
+    return;
+  }
+
+  refreshAdmin(); // live refresh
+}
+  
   async function updateUI() {
     const { data } = await sb.auth.getSession();
     const authed = !!data.session;
