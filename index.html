@@ -128,6 +128,24 @@
       setError("Sent ✅");
       setTimeout(() => setError(""), 1200);
     }
+    
+// ---- LIVE updates (no refresh needed) ----
+window.statusChannel = null;
+
+function startLiveStatusUpdates() {
+  if (window.statusChannel) return;
+
+  window.statusChannel = window.sb
+    .channel("status-live")
+    .on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "app_status" },
+      () => {
+        load(); // reload UI automatically
+      }
+    )
+    .subscribe();
+}
 
     // expose
     window.load = load;
@@ -135,7 +153,7 @@
   </script>
 </head>
 
-<body onload="load()">
+<body onload="load(); startLiveStatusUpdates();">
   <h1 id="status">Loading…</h1>
   <div id="buttons"></div>
 
@@ -146,3 +164,4 @@
   <div id="error"></div>
 </body>
 </html>
+
