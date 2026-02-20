@@ -131,9 +131,7 @@
         <td>${r.other_text ?? ""}</td>
         <td>${r.status_at_time}</td>
         <td>
-          <button onclick="deleteRequest(${r.id})">
-            Delete
-          </button>
+          <button onclick='deleteRequest(${JSON.stringify(r.id)})'>Delete</button>
         </td>
       `;
       t.appendChild(tr);
@@ -155,6 +153,8 @@ async function deleteRequest(id){
 
   refreshAdmin(); // live refresh
 }
+
+window.deleteRequest = deleteRequest;
   
   async function updateUI() {
     const { data } = await sb.auth.getSession();
