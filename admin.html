@@ -42,27 +42,72 @@
 </div>
 
 <script>
+<script>
   const SUPABASE_URL = "https://vssilapltdpdwulsqtma.supabase.co";
   const SUPABASE_KEY = "sb_publishable_06j9641qX6bJ0Q0GCONGrw_G6Pa5UrP";
+
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  function setError(msg){ document.getElementById("error").textContent = msg || ""; }
+  function setError(msg) {
+    document.getElementById("error").textContent = msg || "";
+  }
 
-  async function refreshAdmin(){
+  // ----- LIVE channels -----
+  let statusChannel = null;
+  let requestsChannel = null;
+
+  function startLiveAdmin() {
+    if (statusChannel || requestsChannel) return; // don’t double-subscribe
+
+    statusChannel = sb
+      .channel("admin-status-live")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "app_status" },
+        () => refreshAdmin()
+      )
+      .subscribe();
+
+    requestsChannel = sb
+      .channel("admin-requests-live")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "requests" },
+        () => refreshAdmin()
+      )
+      .subscribe();
+  }
+
+  function stopLiveAdmin() {
+    if (statusChannel) sb.removeChannel(statusChannel);
+    if (requestsChannel) sb.removeChannel(requestsChannel);
+    statusChannel = null;
+    requestsChannel = null;
+  }
+
+  async function refreshAdmin() {
     setError("");
 
-    const statusRes = await sb.from("app_status").select("*").eq("id",1).single();
-    if(statusRes.error){ setError("Status read error: " + statusRes.error.message); return; }
+    // STATUS
+    const statusRes = await sb.from("app_status").select("*").eq("id", 1).single();
+    if (statusRes.error) {
+      setError("Status read error: " + statusRes.error.message);
+      return;
+    }
 
     document.getElementById("status").innerText =
       statusRes.data.is_available ? "🙂 Any time" : "🙁 Busy";
 
+    // REQUESTS
     const reqRes = await sb.from("requests")
       .select("*")
-      .order("created_at", {ascending:false})
+      .order("created_at", { ascending: false })
       .limit(50);
 
-    if(reqRes.error){ setError("Requests read error: " + reqRes.error.message); return; }
+    if (reqRes.error) {
+      setError("Requests read error: " + reqRes.error.message);
+      return;
+    }
 
     const t = document.getElementById("reqTable");
     t.innerHTML = `
@@ -71,8 +116,11 @@
       </tr>
     `;
 
-    (reqRes.data || []).forEach(r=>{
-      const selected = Array.isArray(r.selected_keys) ? r.selected_keys.join(", ") : JSON.stringify(r.selected_keys);
+    (reqRes.data || []).forEach(r => {
+      const selected = Array.isArray(r.selected_keys)
+        ? r.selected_keys.join(", ")
+        : JSON.stringify(r.selected_keys);
+
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${new Date(r.created_at).toLocaleString()}</td>
@@ -84,42 +132,60 @@
     });
   }
 
-  async function updateUI(){
+  async function updateUI() {
     const { data } = await sb.auth.getSession();
     const authed = !!data.session;
+
     document.getElementById("loginBox").style.display = authed ? "none" : "block";
     document.getElementById("adminBox").style.display = authed ? "block" : "none";
-    if(authed) await refreshAdmin();
+
+    if (authed) {
+      startLiveAdmin();      // ✅ start realtime listeners
+      await refreshAdmin();  // ✅ initial load
+    } else {
+      stopLiveAdmin();       // ✅ stop listeners on logout
+    }
   }
 
-  document.getElementById("loginBtn").onclick = async ()=>{
+  document.getElementById("loginBtn").onclick = async () => {
     setError("");
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
+
     const res = await sb.auth.signInWithPassword({ email, password });
-    if(res.error) setError("Login error: " + res.error.message);
+    if (res.error) setError("Login error: " + res.error.message);
+
     await updateUI();
   };
 
-  document.getElementById("logoutBtn").onclick = async ()=>{
+  document.getElementById("logoutBtn").onclick = async () => {
     await sb.auth.signOut();
     await updateUI();
   };
 
-  document.getElementById("toggleBtn").onclick = async ()=>{
+  document.getElementById("toggleBtn").onclick = async () => {
     setError("");
-    const cur = await sb.from("app_status").select("*").eq("id",1).single();
-    if(cur.error){ setError("Toggle read error: " + cur.error.message); return; }
+
+    const cur = await sb.from("app_status").select("*").eq("id", 1).single();
+    if (cur.error) {
+      setError("Toggle read error: " + cur.error.message);
+      return;
+    }
 
     const upd = await sb.from("app_status")
       .update({ is_available: !cur.data.is_available, updated_at: new Date().toISOString() })
-      .eq("id",1);
+      .eq("id", 1);
 
-    if(upd.error){ setError("Toggle update error: " + upd.error.message); return; }
+    if (upd.error) {
+      setError("Toggle update error: " + upd.error.message);
+      return;
+    }
+
     await refreshAdmin();
   };
 
   updateUI();
+</script>
 </script>
 </body>
 </html>
