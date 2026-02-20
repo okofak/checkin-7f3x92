@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin Panel</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+const SUPABASE_URL = "https://vssilapltdpdwulsqtma.supabase.co";
+const SUPABASE_KEY = "sb_publishable_tWRkP1Gj73tg7wb3JS9Cvw_8ek2-4EG";
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function loadAdmin(){
+
+// STATUS
+const { data: status } =
+await sb.from("app_status").select("*").eq("id",1).single();
+
+document.getElementById("status")
+.innerText = status.is_available
+? "🙂 Any time"
+: "🙁 Busy";
+
+// REQUESTS
+const { data: reqs } =
+await sb.from("requests")
+.select("*")
+.order("created_at",{ascending:false});
+
+const list=document.getElementById("requests");
+list.innerHTML="";
+
+reqs.forEach(r=>{
+const li=document.createElement("div");
+li.innerText =
+`${new Date(r.created_at).toLocaleString()} → ${r.selected_keys.join(", ")}`;
+list.appendChild(li);
+});
+}
+
+async function toggleStatus(){
+
+const { data: status } =
+await sb.from("app_status").select("*").eq("id",1).single();
+
+await sb.from("app_status")
+.update({is_available:!status.is_available})
+.eq("id",1);
+
+loadAdmin();
+}
+</script>
+</head>
+
+<body onload="loadAdmin()" style="font-family:sans-serif;text-align:center">
+
+<h1 id="status"></h1>
+
+<button onclick="toggleStatus()">Toggle Status</button>
+
+<h2>Requests</h2>
+<div id="requests"></div>
+
+</body>
+</html>
