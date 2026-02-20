@@ -150,6 +150,24 @@ function startLiveStatusUpdates() {
     .subscribe();
 }
 
+// ---- LIVE request updates ----
+window.requestsChannel = null;
+
+function startLiveRequestsUpdates() {
+  if (window.requestsChannel) return;
+
+  window.requestsChannel = window.sb
+    .channel("requests-live")
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "requests" },
+      () => {
+        load(); // reload admin requests automatically
+      }
+    )
+    .subscribe();
+}
+
     // expose
     window.load = load;
     window.sendRequest = sendRequest;
@@ -157,7 +175,7 @@ function startLiveStatusUpdates() {
   </script>
 </head>
 
-<body onload="load(); startLiveStatusUpdates();">
+<body onload="load(); startLiveStatusUpdates(); startLiveRequestsUpdates();">
   <h1 id="status">Loading…</h1>
   <div id="buttons"></div>
 
@@ -168,6 +186,7 @@ function startLiveStatusUpdates() {
   <div id="error"></div>
 </body>
 </html>
+
 
 
 
