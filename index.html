@@ -98,8 +98,6 @@
         return;
       }
 
-      const timeWindow = document.getElementById("timeWindow").value.trim();
-
       const statusRes = await window.sb.from("app_status").select("*").eq("id", 1).single();
       if (statusRes.error) { setError("Status error: " + statusRes.error.message); return; }
 
@@ -108,7 +106,6 @@
       const ins = await window.sb.from("requests").insert({
         selected_keys: Array.from(window.selectedKeys),
         other_text: window.selectedKeys.has("other") ? (window.otherText || null) : null,
-        time_window: timeWindow ? timeWindow : null,
         status_at_time: statusAtTime
       });
 
@@ -133,11 +130,6 @@
 
   <div id="buttons"></div>
 
-  <div style="margin-top:12px;">
-    <div style="font-weight:700; margin-bottom:6px;">What window? (optional)</div>
-    <input id="timeWindow" placeholder="e.g., 2–4pm or tonight" />
-  </div>
-
   <div>
     <button id="sendBtn" onclick="sendRequest()" disabled>Send</button>
   </div>
@@ -145,3 +137,4 @@
   <div id="error"></div>
 </body>
 </html>
+
