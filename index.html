@@ -109,13 +109,31 @@
           }
       
           updateSendEnabled();
-        };
+          };
+ // Long Press 3 seconds to clear kitchen_supplies / other
+        let pressTimer = null;
       
+        btn.addEventListener("touchstart", () => {
+          const isTextButton = b.key === "kitchen_supplies" || b.key === "other";
+          if (!isTextButton) return;
+      
+          pressTimer = setTimeout(() => {
+            window.selectedKeys.delete(b.key);
+            window.extraTextByKey[b.key] = [];
+            btn.classList.remove("selected");
+            updateSendEnabled();
+            setError(`${b.label} cleared`);
+            setTimeout(() => setError(""), 1200);
+          }, 3000);
+        });
+      
+        btn.addEventListener("touchend", () => clearTimeout(pressTimer));
+        btn.addEventListener("touchmove", () => clearTimeout(pressTimer));
+        
         container.appendChild(btn);
-      });
-
-      updateSendEnabled();
-      }
+        });
+          updateSendEnabled();
+        }
 
     async function sendRequest() {
       setError("");
@@ -235,6 +253,7 @@ function startLiveRequestsUpdates() {
   <div id="error"></div>
 </body>
 </html>
+
 
 
 
