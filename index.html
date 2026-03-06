@@ -124,12 +124,30 @@
             updateSendEnabled();
             setError(`${b.label} cleared`);
             setTimeout(() => setError(""), 1200);
-          }, 3000);
+          }, 2000);
         });
       
         btn.addEventListener("touchend", () => clearTimeout(pressTimer));
         btn.addEventListener("touchmove", () => clearTimeout(pressTimer));
-        
+// Mouse Hold for desktop
+        let mousePressTimer = null;
+      
+        btn.addEventListener("mousedown", () => {
+          const isTextButton = b.key === "kitchen_supplies" || b.key === "other";
+          if (!isTextButton) return;
+      
+          mousePressTimer = setTimeout(() => {
+            window.selectedKeys.delete(b.key);
+            window.extraTextByKey[b.key] = [];
+            btn.classList.remove("selected");
+            updateSendEnabled();
+            setError(`${b.label} cleared`);
+            setTimeout(() => setError(""), 1200);
+          }, 2000);
+        });
+
+          btn.addEventListener("mouseup", () => clearTimeout(mousePressTimer));
+          btn.addEventListener("mouseleave", () => clearTimeout(mousePressTimer));        
         container.appendChild(btn);
         });
           updateSendEnabled();
@@ -243,7 +261,7 @@ function startLiveRequestsUpdates() {
   <h1 id="status">Loading…</h1>
   <div id="buttons"></div>
   <p id="helperText">
-    Tip: To unselect <strong>Kitchen Supplies</strong> or <strong>Other</strong>, press and hold for 3 seconds.
+    Tip: To unselect <strong>Kitchen Supplies</strong> or <strong>Other</strong>, press and hold for 2 seconds.
     Tip2: To add More Items To either <strong>Kitchen Supplies</strong> or <strong>Other</strong>, press the category box again.
   </p>
   <div>
@@ -253,6 +271,7 @@ function startLiveRequestsUpdates() {
   <div id="error"></div>
 </body>
 </html>
+
 
 
 
