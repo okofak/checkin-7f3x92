@@ -69,60 +69,48 @@
         const btn = document.createElement("button");
         btn.textContent = b.label;
         btn.dataset.key = b.key;
-
+      
         if (window.selectedKeys.has(b.key)) btn.classList.add("selected");
-
-     btn.onclick = () => {
-        setError("");
       
-        const isTextButton = b.key === "kitchen_supplies" || b.key === "other";
+        btn.onclick = () => {
+          setError("");
       
-        // kitchen_supplies + other:
-        // every tap opens prompt and adds another item
-        if (isTextButton) {
-          const txt = prompt(`What ${b.label.toLowerCase()}?`);
-          if (txt === null) return;
+          const isTextButton = b.key === "kitchen_supplies" || b.key === "other";
       
-          const cleaned = txt.trim();
+          // kitchen_supplies + other:
+          // every tap opens prompt and adds another item
+          if (isTextButton) {
+            const txt = prompt(`What ${b.label.toLowerCase()}?`);
+            if (txt === null) return;
       
-          if (!window.extraTextByKey[b.key]) {
-            window.extraTextByKey[b.key] = [];
+            const cleaned = txt.trim();
+      
+            if (!window.extraTextByKey[b.key]) {
+              window.extraTextByKey[b.key] = [];
+            }
+      
+            if (cleaned.length) {
+              window.extraTextByKey[b.key].push(cleaned);
+            }
+      
+            window.selectedKeys.add(b.key);
+            btn.classList.add("selected");
+            updateSendEnabled();
+            return;
           }
       
-          if (cleaned.length) {
-            window.extraTextByKey[b.key].push(cleaned);
+          // all normal buttons: click toggles on/off
+          if (window.selectedKeys.has(b.key)) {
+            window.selectedKeys.delete(b.key);
+            btn.classList.remove("selected");
+          } else {
+            window.selectedKeys.add(b.key);
+            btn.classList.add("selected");
           }
       
-          window.selectedKeys.add(b.key);
-          btn.classList.add("selected");
           updateSendEnabled();
-          return;
-        }
+        };
       
-        // all normal buttons: click toggles on/off
-        if (window.selectedKeys.has(b.key)) {
-          window.selectedKeys.delete(b.key);
-          btn.classList.remove("selected");
-        } else {
-          window.selectedKeys.add(b.key);
-          btn.classList.add("selected");
-        }
-      
-        updateSendEnabled();
-      };
-      
-        // NORMAL buttons: click toggles on/off
-        if (window.selectedKeys.has(b.key)) {
-          window.selectedKeys.delete(b.key);
-          btn.classList.remove("selected");
-        } else {
-          window.selectedKeys.add(b.key);
-          btn.classList.add("selected");
-        }
-      
-        updateSendEnabled();
-      };
-
         container.appendChild(btn);
       });
 
@@ -233,11 +221,12 @@ function startLiveRequestsUpdates() {
   </script>
 </head>
 
-<body onload="load(); startLiveStatusUpdates(); startLiveRequestsUpdates();">
+<body onload="load(); startLiveStatusUpdates();">
   <h1 id="status">Loading…</h1>
   <div id="buttons"></div>
   <p id="helperText">
     Tip: To unselect <strong>Kitchen Supplies</strong> or <strong>Other</strong>, press and hold for 3 seconds.
+    Tip2: To add More Items To either <strong>Kitchen Supplies</strong> or <strong>Other</strong>, press the category box again.
   </p>
   <div>
     <button id="sendBtn" onclick="sendRequest()" disabled>Send</button>
@@ -246,6 +235,7 @@ function startLiveRequestsUpdates() {
   <div id="error"></div>
 </body>
 </html>
+
 
 
 
