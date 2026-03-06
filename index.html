@@ -25,7 +25,7 @@
     window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     window.selectedKeys = new Set();
-    window.otherText = "";
+    window.extraTextByKey = {};
 
     function setError(msg) {
       const el = document.getElementById("error");
@@ -66,29 +66,40 @@
 
         if (window.selectedKeys.has(b.key)) btn.classList.add("selected");
 
-        btn.onclick = () => {
-          // toggle off
-          if (window.selectedKeys.has(b.key)) {
-            window.selectedKeys.delete(b.key);
-            if (b.key === "other") window.otherText = "";
-            btn.classList.remove("selected");
-            updateSendEnabled();
-            return;
+      btn.onclick = () => {
+        setError("");
+      
+        // TEXT buttons (kitchen_supplies / other):
+        // clicking again should ADD another item, not unselect
+        if (b.needs_text) {
+          const txt = prompt(`What ${b.label.toLowerCase()}?`);
+          if (txt === null) return;
+      
+          const cleaned = txt.trim();
+          if (!window.extraTextByKey[b.key]) {
+            window.extraTextByKey[b.key] = [];
           }
-
-          // selecting on
-          if (b.needs_text) {
-            const txt = prompt(`What ${b.label.toLowerCase()}?`);
-            if (txt === null) return; // cancel => do not select
-            window.otherText = txt;   // can be empty
+          if (cleaned.length) {
+            window.extraTextByKey[b.key].push(cleaned);
           }
-
+      
           window.selectedKeys.add(b.key);
           btn.classList.add("selected");
           updateSendEnabled();
-
-          startLiveStatusUpdates();
-        };
+          return;
+        }
+      
+        // NORMAL buttons: click toggles on/off
+        if (window.selectedKeys.has(b.key)) {
+          window.selectedKeys.delete(b.key);
+          btn.classList.remove("selected");
+        } else {
+          window.selectedKeys.add(b.key);
+          btn.classList.add("selected");
+        }
+      
+        updateSendEnabled();
+      };
 
         container.appendChild(btn);
       });
@@ -121,22 +132,12 @@
       const selected = Array.from(window.selectedKeys || []);
       
       // ✅ build combined other_text (kitchen + other)
-      const otherTextCombined = (() => {
-        const parts = [];
-        const extra = window.extraTextByKey || {};
-      
-        if (selected.includes("kitchen_supplies")) {
-          const arr = extra["kitchen_supplies"] || [];
-          if (arr.length) parts.push("kitchen: " + arr.join("; "));
-        }
-      
-        if (selected.includes("other")) {
-          const arr = extra["other"] || [];
-          if (arr.length) parts.push("other: " + arr.join("; "));
-        }
-      
-        return parts.length ? parts.join(" | ") : null;
-      })();
+      const otherTextCombined = Object.entries(window.extraTextByKey || {})
+        .filter(([key, arr]) =>
+          selected.includes(key) && Array.isArray(arr) && arr.length
+        )
+        .map(([key, arr]) => `${key}: ${arr.join("; ")}`)
+        .join(" | ") || null;
       
       // ✅ single insert (one time)
       const ins = await window.sb.from("requests").insert({
@@ -151,10 +152,8 @@
       }
       
       window.extraTextByKey = {};
-      
       // reset state + visuals
       window.selectedKeys.clear();
-      window.otherText = "";
       document
         .querySelectorAll("#buttons button")
         .forEach((b) => b.classList.remove("selected"));
@@ -223,6 +222,7 @@ function startLiveRequestsUpdates() {
   <div id="error"></div>
 </body>
 </html>
+
 
 
 
