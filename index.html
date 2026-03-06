@@ -30,12 +30,12 @@
     function setError(msg) {
       const el = document.getElementById("error");
       el.textContent = msg || "";
-    }
+      }
 
     function updateSendEnabled() {
       const sendBtn = document.getElementById("sendBtn");
       sendBtn.disabled = window.selectedKeys.size === 0;
-    }
+      }
 
     async function load() {
       setError("");
@@ -94,7 +94,7 @@
       });
 
       updateSendEnabled();
-    }
+      }
 
     async function sendRequest() {
       setError("");
@@ -166,7 +166,7 @@
       // success message briefly
       setError("Sent ✅");
       setTimeout(() => setError(""), 1200);
-    }
+      }
     
 // ---- LIVE updates (no refresh needed) ----
 window.statusChannel = null;
@@ -185,7 +185,7 @@ function startLiveStatusUpdates() {
       }
     )
     .subscribe();
-}
+    }
 
 // ---- LIVE request updates ----
 window.requestsChannel = null;
@@ -203,7 +203,7 @@ function startLiveRequestsUpdates() {
       }
     )
     .subscribe();
-}
+    }
 
     // expose
     window.load = load;
@@ -223,6 +223,7 @@ function startLiveRequestsUpdates() {
   <div id="error"></div>
 </body>
 </html>
+
 
 
 
