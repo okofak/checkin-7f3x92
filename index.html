@@ -26,6 +26,7 @@
 
     window.selectedKeys = new Set();
     window.extraTextByKey = {};
+    window.otherText = "";
 
     function setError(msg) {
       const el = document.getElementById("error");
@@ -66,19 +67,23 @@
 
         if (window.selectedKeys.has(b.key)) btn.classList.add("selected");
 
-      btn.onclick = () => {
+     btn.onclick = () => {
         setError("");
       
-        // TEXT buttons (kitchen_supplies / other):
-        // clicking again should ADD another item, not unselect
-        if (b.needs_text) {
+        const isTextButton = b.key === "kitchen_supplies" || b.key === "other";
+      
+        // kitchen_supplies + other:
+        // every tap opens prompt and adds another item
+        if (isTextButton) {
           const txt = prompt(`What ${b.label.toLowerCase()}?`);
           if (txt === null) return;
       
           const cleaned = txt.trim();
+      
           if (!window.extraTextByKey[b.key]) {
             window.extraTextByKey[b.key] = [];
           }
+      
           if (cleaned.length) {
             window.extraTextByKey[b.key].push(cleaned);
           }
@@ -88,6 +93,18 @@
           updateSendEnabled();
           return;
         }
+      
+        // all normal buttons: click toggles on/off
+        if (window.selectedKeys.has(b.key)) {
+          window.selectedKeys.delete(b.key);
+          btn.classList.remove("selected");
+        } else {
+          window.selectedKeys.add(b.key);
+          btn.classList.add("selected");
+        }
+      
+        updateSendEnabled();
+      };
       
         // NORMAL buttons: click toggles on/off
         if (window.selectedKeys.has(b.key)) {
@@ -222,6 +239,7 @@ function startLiveRequestsUpdates() {
   <div id="error"></div>
 </body>
 </html>
+
 
 
 
