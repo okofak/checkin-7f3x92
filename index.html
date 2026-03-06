@@ -110,28 +110,35 @@
       const statusAtTime = statusRes.data.is_available ? "any_time" : "busy";
 
       const ins = await window.sb.from("requests").insert({
-        selected_keys: Array.from(window.selectedKeys),
-        other_text: (() => {
-              const parts = [];
-            
-              // include text for kitchen
-              if (window.selectedKeys.has("kitchen")) {
-                const arr = window.extraTextByKey?.kitchen_supplies || [];
-                if (arr.length) parts.push("kitchen: " + arr.join("; "));
-              }
-            
-              // include text for other
-              if (window.selectedKeys.has("other")) {
-                const arr = window.extraTextByKey?.other || [];
-                if (arr.length) parts.push("other: " + arr.join("; "));
-              }
-            
-              return parts.length ? parts.join(" | ") : null;
-            })(),
-        status_at_time: statusAtTime
-      });
+        const selected = Array.from(window.selectedKeys || []);
+        
+        const otherTextCombined = (() => {
+          const parts = [];
+          const extra = window.extraTextByKey || {};
+        
+          // if kitchen supplies button key is "kitchen_supplies"
+          if (selected.includes("kitchen_supplies")) {
+            const arr = extra["kitchen_supplies"] || [];
+            if (arr.length) parts.push("kitchen: " + arr.join("; "));
+          }
+        
+          // if other button key is "other"
+          if (selected.includes("other")) {
+            const arr = extra["other"] || [];
+            if (arr.length) parts.push("other: " + arr.join("; "));
+          }
+        
+          return parts.length ? parts.join(" | ") : null;
+        })();
+        
+        const ins = await window.sb.from("requests").insert({
+          selected_keys: selected,
+          other_text: otherTextCombined,
+          status_at_time: statusAtTime
+        });
 
       if (ins.error) { setError("Send error: " + ins.error.message); return; }
+      window.extraTextByKey = {};
 
       // reset state + visuals
       window.selectedKeys.clear();
@@ -202,6 +209,7 @@ function startLiveRequestsUpdates() {
   <div id="error"></div>
 </body>
 </html>
+
 
 
 
