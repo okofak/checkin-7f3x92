@@ -124,7 +124,7 @@
             updateSendEnabled();
             setError(`${b.label} cleared`);
             setTimeout(() => setError(""), 1200);
-          }, 2000);
+          }, 1300);
         });
       
         btn.addEventListener("touchend", () => clearTimeout(pressTimer));
@@ -143,7 +143,7 @@
             updateSendEnabled();
             setError(`${b.label} cleared`);
             setTimeout(() => setError(""), 1200);
-          }, 2000);
+          }, 1300);
         });
 
           btn.addEventListener("mouseup", () => clearTimeout(mousePressTimer));
@@ -261,8 +261,8 @@ function startLiveRequestsUpdates() {
   <h1 id="status">Loading…</h1>
   <div id="buttons"></div>
   <p id="helperText">
-    Tip: To unselect <strong>Kitchen Supplies</strong> or <strong>Other</strong>, press and hold for 2 seconds.
-    Tip2: To add More Items To either <strong>Kitchen Supplies</strong> or <strong>Other</strong>, press the category box again.
+    Tip: To unselect <strong>Kitchen Supplies</strong> or <strong>Other</strong>, press and hold for 1 seconds.
+    Tip 2: To add More Items To either <strong>Kitchen Supplies</strong> or <strong>Other</strong>, press the category box again.
   </p>
   <div>
     <button id="sendBtn" onclick="sendRequest()" disabled>Send</button>
@@ -271,6 +271,7 @@ function startLiveRequestsUpdates() {
   <div id="error"></div>
 </body>
 </html>
+
 
 
 
