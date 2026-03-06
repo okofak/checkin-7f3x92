@@ -78,7 +78,7 @@
 
           // selecting on
           if (b.needs_text) {
-            const txt = prompt("What other thing? (optional)");
+            const txt = prompt(`What ${b.label.toLowerCase()}?');
             if (txt === null) return; // cancel => do not select
             window.otherText = txt;   // can be empty
           }
@@ -186,6 +186,7 @@ function startLiveRequestsUpdates() {
   <div id="error"></div>
 </body>
 </html>
+
 
 
 
